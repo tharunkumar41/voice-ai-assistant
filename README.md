@@ -640,11 +640,4 @@ By automating repetitive customer interactions and preserving structured convers
 
 ## Author
 
-**Project:** Voice AI Personal Assistant  
-**Category:** AI-powered business automation  
-**Frontend:** Next.js and TypeScript  
-**Backend:** Next.js API routes  
-**Database:** Supabase PostgreSQL  
-**AI:** Groq-compatible AI API  
-**Voice:** Deepgram, Sarvam, and ElevenLabs  
-**Integration:** Google Calendar
+Tharunkumar S
