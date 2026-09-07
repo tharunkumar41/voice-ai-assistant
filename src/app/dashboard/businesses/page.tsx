@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
+import { PageSpinner } from "@/components/ui/spinner";
 
 export default function BusinessesPage() {
   const [name, setName] = useState("");
@@ -14,6 +15,7 @@ export default function BusinessesPage() {
   const [language, setLanguage] = useState<"en" | "hi">("en");
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(true);
   const supabase = createClient();
   const router = useRouter();
 
@@ -22,8 +24,10 @@ export default function BusinessesPage() {
   }, []);
 
   async function loadBusinesses() {
+    setListLoading(true);
     const { data } = await supabase.from("businesses").select("*").order("created_at", { ascending: false });
     setBusinesses(data || []);
+    setListLoading(false);
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -110,25 +114,31 @@ export default function BusinessesPage() {
       </Card>
 
       <div className="space-y-3">
-        {businesses.map((b) => (
-          <Card key={b.id}>
-            <CardContent className="pt-6 flex justify-between items-center">
-              <div>
-                <p className="font-semibold">{b.name}</p>
-                <p className="text-sm text-gray-500">
-                  {b.industry} • {b.language_pref === "hi" ? "Hindi" : "English"}
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push(`/dashboard/workflows?business=${b.id}`)}
-              >
-                Create Workflow
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+        {listLoading ? (
+          <PageSpinner label="Loading businesses..." />
+        ) : businesses.length === 0 ? (
+          <p className="text-sm text-gray-400">No businesses yet — create one above.</p>
+        ) : (
+          businesses.map((b) => (
+            <Card key={b.id}>
+              <CardContent className="pt-6 flex justify-between items-center">
+                <div>
+                  <p className="font-semibold">{b.name}</p>
+                  <p className="text-sm text-gray-500">
+                    {b.industry} • {b.language_pref === "hi" ? "Hindi" : "English"}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push(`/dashboard/workflows?business=${b.id}`)}
+                >
+                  Create Workflow
+                </Button>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

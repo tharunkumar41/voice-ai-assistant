@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { generateId } from "@/lib/utils";
 import { WorkflowQuestion, WorkflowCondition } from "@/types";
 import { useSearchParams } from "next/navigation";
+import { PageSpinner } from "@/components/ui/spinner";
 
 const PRESETS = {
   cake: {
@@ -88,6 +89,7 @@ export default function WorkflowsPage() {
   const [questions, setQuestions] = useState<WorkflowQuestion[]>([]);
   const [conditions, setConditions] = useState<WorkflowCondition[]>([]);
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const [showBuilder, setShowBuilder] = useState(false);
 
   const supabase = createClient();
@@ -97,6 +99,7 @@ export default function WorkflowsPage() {
   }, []);
 
   async function loadData() {
+    setDataLoading(true);
     const { data: b } = await supabase.from("businesses").select("*");
     setBusinesses(b || []);
     if (b && b.length > 0 && !selectedBusiness) {
@@ -108,6 +111,7 @@ export default function WorkflowsPage() {
       .select("*, businesses(name)")
       .order("created_at", { ascending: false });
     setWorkflows(w || []);
+    setDataLoading(false);
   }
 
   function loadPreset(key: "cake" | "clinic") {
@@ -181,28 +185,34 @@ export default function WorkflowsPage() {
 
       {/* Existing workflows */}
       <div className="grid gap-4">
-        {workflows.map((w) => (
-          <Card key={w.id}>
-            <CardContent className="pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <p className="font-semibold">{w.name}</p>
-                <p className="text-sm text-gray-500">
-                  {w.businesses?.name} • {w.language === "hi" ? "Hindi" : "English"} •{" "}
-                  {w.questions?.length || 0} questions
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <span
-                  className={`text-xs px-2 py-1 rounded-full ${
-                    w.is_active ? "bg-green-100 text-green-700" : "bg-gray-100"
-                  }`}
-                >
-                  {w.is_active ? "Active" : "Inactive"}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {dataLoading ? (
+          <PageSpinner label="Loading workflows..." />
+        ) : workflows.length === 0 ? (
+          <p className="text-sm text-gray-400">No workflows yet — use a preset or create a custom one above.</p>
+        ) : (
+          workflows.map((w) => (
+            <Card key={w.id}>
+              <CardContent className="pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <p className="font-semibold">{w.name}</p>
+                  <p className="text-sm text-gray-500">
+                    {w.businesses?.name} • {w.language === "hi" ? "Hindi" : "English"} •{" "}
+                    {w.questions?.length || 0} questions
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full ${
+                      w.is_active ? "bg-green-100 text-green-700" : "bg-gray-100"
+                    }`}
+                  >
+                    {w.is_active ? "Active" : "Inactive"}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       {/* Builder */}

@@ -61,6 +61,10 @@ function parseDateTime(date: string, time: string, timeZone: string) {
     throw new Error("Invalid date or time.");
   }
 
+  if (value.getTime() <= Date.now()) {
+    throw new Error("The requested appointment date and time is in the past. Please choose a future date and time.");
+  }
+
   return {
     dateTime: value.toISOString(),
     timeZone,

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { VoiceMic, speakText } from "@/components/voice/VoiceMic";
+import type { VoiceSessionStatus } from "@/components/voice/VoiceMic";
 
 interface Message {
   role: "user" | "assistant";
@@ -30,6 +31,8 @@ export default function SimulatorPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [voiceError, setVoiceError] = useState("");
   const [speaking, setSpeaking] = useState(false);
+  const [voiceSessionActive, setVoiceSessionActive] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState<VoiceSessionStatus>("idle");
   const bottomRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
@@ -79,6 +82,8 @@ export default function SimulatorPage() {
     setSummary("");
     setConversationId(null);
     setVoiceError("");
+    setVoiceSessionActive(false);
+    setVoiceStatus("idle");
 
     await new Promise((r) => setTimeout(r, 1200));
     setStatus("missed");
@@ -214,9 +219,11 @@ export default function SimulatorPage() {
           <li>Select a workflow and enter caller details</li>
           <li>Click <strong>Simulate Missed Call</strong> — AI greets you (spoken if voice is on)</li>
           <li>
-            Reply by typing <strong>or hold 🎤 to talk</strong>
+            Click <strong>🎤 Start conversation</strong> once — then just talk. The mic
+            stays on and listens for each of your turns automatically, no need to click again.
           </li>
-          <li>AI replies in text + voice; data is saved to the dashboard</li>
+          <li>AI replies in text + voice, then starts listening again on its own; data is saved to the dashboard</li>
+          <li>Click the mic again any time to end the voice session</li>
         </ol>
       </div>
 
@@ -306,6 +313,11 @@ export default function SimulatorPage() {
                     🔊 Speaking...
                   </Badge>
                 )}
+                {voiceSessionActive && voiceStatus === "listening" && !speaking && (
+                  <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                    🎙️ Listening...
+                  </Badge>
+                )}
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
                     type="checkbox"
@@ -324,6 +336,8 @@ export default function SimulatorPage() {
                     setCollectedData({});
                     setUrgency(false);
                     setSummary("");
+                    setVoiceSessionActive(false);
+                    setVoiceStatus("idle");
                   }}
                 >
                   End & Start New
@@ -405,16 +419,24 @@ export default function SimulatorPage() {
                 />
                 <VoiceMic
                   language={language}
-                  disabled={loading || speaking}
+                  paused={loading || speaking}
                   onTranscript={(text) => sendUserText(text)}
                   onError={(msg) => setVoiceError(msg)}
+                  onSessionChange={setVoiceSessionActive}
+                  onStatusChange={setVoiceStatus}
                 />
                 <Button onClick={sendMessage} disabled={loading || !input.trim() || speaking}>
                   Send
                 </Button>
               </div>
               <p className="text-xs text-gray-400">
-                Hold the mic button and speak · STT: Deepgram / Sarvam · TTS: Sarvam / ElevenLabs
+                {voiceSessionActive
+                  ? voiceStatus === "listening"
+                    ? "🎙️ Listening — just start talking, no need to click again."
+                    : voiceStatus === "speaking"
+                    ? "🔊 Assistant is replying — it'll listen again automatically."
+                    : "🤔 Thinking…"
+                  : "Click the mic once to start a hands-free conversation · STT: Deepgram / Sarvam · TTS: Sarvam / ElevenLabs"}
               </p>
             </div>
           </Card>

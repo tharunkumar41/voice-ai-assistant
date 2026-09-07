@@ -74,10 +74,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const systemPrompt = buildSystemPrompt(
+    const currentDateTime = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      dateStyle: "full",
+      timeStyle: "short",
+      hour12: true,
+    }).format(new Date());
+
+    const systemPrompt = `${buildSystemPrompt(
       workflow as Workflow,
       business as Business
-    );
+    )}
+
+CURRENT DATE AND TIME:
+${currentDateTime} (Asia/Kolkata)
+
+CALENDAR RULES:
+- Interpret relative dates such as today, tomorrow, and next Monday using the current date above.
+- Never check or create an appointment in the past.
+- If the requested date or time has already passed, explain that it is in the past and ask for a future date and time.
+- Do not claim a slot is available unless the calendar tool successfully confirms it.
+`;
 
     const openaiMessages: any[] = [
       { role: "system", content: systemPrompt },
@@ -104,15 +121,41 @@ export async function POST(req: NextRequest) {
     const MAX_TOOL_ROUNDS = 5;
 
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const response = await ai.chat.completions.create({
-        model: AI_MODEL,
-        messages: openaiMessages,
-        tools: calendarTools,
-        tool_choice: "auto",
-        temperature: 0.6,
-      });
+      let response;
+      try {
+        response = await ai.chat.completions.create({
+          model: AI_MODEL,
+          messages: openaiMessages,
+          tools: calendarTools,
+          tool_choice: "auto",
+          temperature: 0.6,
+        });
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("Chat API error:", error);
+        if (/tool call validation failed/i.test(errorMessage) && /check_calendar_availability/i.test(errorMessage) && /date|time/i.test(errorMessage)) {
+          assistantMessage = {
+            role: "assistant",
+            content: "Sure! What date and time would you like to book?",
+            tool_calls: [],
+          };
+          break;
+        }
+        throw error;
+      }
 
-      assistantMessage = response.choices[0].message;
+      const firstChoice = response?.choices?.[0];
+      if (!firstChoice?.message) {
+        console.error("Chat API returned an empty response:", response);
+        assistantMessage = {
+          role: "assistant",
+          content: "I'm sorry, I couldn't process that. Could you please try again?",
+          tool_calls: [],
+        };
+        break;
+      }
+
+      assistantMessage = firstChoice.message;
       const rawToolCalls = assistantMessage.tool_calls;
 
       if (!rawToolCalls || rawToolCalls.length === 0) {
@@ -349,9 +392,14 @@ Urgency conditions: ${JSON.stringify((workflow as Workflow).conditions)}`,
   } catch (error: any) {
     console.error("Chat API error:", error);
 
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      reply: "Sorry, something went wrong while processing your request. Please try again.",
+      tool_calls: null,
+      collected_data: {},
+      urgency: false,
+      is_complete: false,
+      summary: "",
+      error: "Request processing failed",
+    });
   }
 }

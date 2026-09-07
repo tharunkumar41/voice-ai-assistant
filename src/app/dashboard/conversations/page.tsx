@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageSpinner } from "@/components/ui/spinner";
 
 export default function ConversationsPage() {
   const [conversations, setConversations] = useState<any[]>([]);
@@ -82,7 +83,7 @@ export default function ConversationsPage() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Conversations List */}
         <div className="lg:col-span-1 space-y-3 max-h-[calc(100vh-180px)] overflow-y-auto">
-          {loading && <p className="text-gray-500">Loading...</p>}
+          {loading && <PageSpinner label="Loading conversations..." />}
 
           {!loading && conversations.length === 0 && (
             <p className="text-gray-500 text-sm">
